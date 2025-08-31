@@ -182,6 +182,7 @@
       }
   
       const frag = document.createDocumentFragment();
+      let seq = 1;
       for (const el of nodes) {
         const id = extractTurnId(el);
         if (!id) continue;
@@ -199,7 +200,7 @@
 
         const line1 = document.createElement("div");
         line1.className = "line1";
-        line1.textContent = `prompt-${id}`;
+        line1.textContent = `prompt ${seq++}`;
         a.appendChild(line1);
 
         const line2 = document.createElement("div");
