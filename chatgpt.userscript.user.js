@@ -95,7 +95,7 @@
           width: 6px; height: 6px; border-radius: 50%; background: #0ea5e9;
           grid-column: 1; grid-row: 1 / span 2; align-self: center;
         }
-        .line1 { grid-column: 2; grid-row: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .line1 { grid-column: 2; grid-row: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
         .line2 { grid-column: 2; grid-row: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; }
         .ellipsis { color: #94a3b8; margin-left: 4px; }
         .empty {
@@ -199,7 +199,7 @@
 
         const line1 = document.createElement("div");
         line1.className = "line1";
-        line1.textContent = `conversation-turn-${id}`;
+        line1.textContent = `prompt-${id}`;
         a.appendChild(line1);
 
         const line2 = document.createElement("div");
