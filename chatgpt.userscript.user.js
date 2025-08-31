@@ -107,13 +107,13 @@
       wrap.className = "card";
       wrap.innerHTML = `
         <div class="header">
-          <div class="title">User turns</div>
+          <div class="title">User prompts</div>
           <div class="actions">
             <button id="refresh" title="Refresh list">↻</button>
             <button id="collapse" title="Collapse/Expand">—</button>
           </div>
         </div>
-        <div class="list" id="list"><div class="empty">No user turns found.</div></div>
+        <div class="list" id="list"><div class="empty">No user prompts found.</div></div>
       `;
   
       shadow.append(style, wrap);
@@ -150,7 +150,7 @@
       if (!nodes.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "No user turns found.";
+        empty.textContent = "No user prompts found.";
         list.appendChild(empty);
         return;
       }
