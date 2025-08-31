@@ -54,4 +54,4 @@ Use any userscript manager (Tampermonkey, Violentmonkey, etc.).
 - After edits, bump the `@version` header so your manager picks up updates.
 
 ### License
-No license specified. Consider adding a license if you plan to share or reuse.
+MIT
