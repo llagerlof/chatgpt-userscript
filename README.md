@@ -1,11 +1,14 @@
 ## ChatGPT User Script
 
-A lightweight userscript that adds a floating "User turns" navigator to ChatGPT conversations. It lists your user messages, lets you jump to any turn with one click, briefly highlights the target, and keeps the active item in sync as you scroll.
+A lightweight userscript that adds a floating "Prompts" navigator to ChatGPT conversations. It lists your user messages, lets you jump to any prompt with one click, briefly highlights the target, and keeps the active item in sync as you scroll.
+
+![Screenshot of the floating "Prompts" navigator panel in ChatGPT](./assets/readme/screenshot.png)
+
 
 ### Features
 - **Floating panel**: Bottom‑right card, encapsulated in a Shadow DOM to avoid style clashes.
-- **One‑click jump**: Smooth‑scroll to any user turn; target flashes briefly.
-- **Active sync**: IntersectionObserver marks the most visible turn as active.
+- **One‑click jump**: Smooth‑scroll to any user prompt; target flashes briefly.
+- **Active sync**: IntersectionObserver marks the most visible prompt as active.
 - **Auto‑update**: MutationObserver rebuilds the list on content changes.
 - **SPA aware**: Detects route changes in ChatGPT and refreshes automatically.
 - **Manual controls**: Refresh (↻) and Collapse (—) buttons.
