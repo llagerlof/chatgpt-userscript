@@ -46,6 +46,9 @@
           max-width: 280px;
           max-height: 50vh;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
         }
         .header {
           display: flex;
@@ -74,8 +77,9 @@
         button:hover { background: #f1f5f9; }
         .list {
           overflow: auto;
-          max-height: calc(50vh - 40px);
           padding: 6px;
+          flex: 1;
+          min-height: 0;
         }
         .item {
           display: grid;
