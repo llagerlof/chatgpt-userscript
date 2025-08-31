@@ -78,23 +78,26 @@
           padding: 6px;
         }
         .item {
-          display: flex;
-          align-items: center;
-          gap: 6px;
+          display: grid;
+          grid-template-columns: 6px 1fr;
+          grid-template-rows: auto auto;
+          align-items: start;
+          gap: 4px 6px;
           padding: 6px 8px;
           border-radius: 8px;
           text-decoration: none;
           color: inherit;
           line-height: 1.2;
-          white-space: nowrap;
-          text-overflow: ellipsis;
-          overflow: hidden;
         }
         .item:hover { background: #f1f5f9; }
         .item.active { background: #e2e8f0; font-weight: 600; }
         .dot {
-          width: 6px; height: 6px; border-radius: 50%; background: #0ea5e9; flex: 0 0 6px;
+          width: 6px; height: 6px; border-radius: 50%; background: #0ea5e9;
+          grid-column: 1; grid-row: 1 / span 2; align-self: center;
         }
+        .line1 { grid-column: 2; grid-row: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .line2 { grid-column: 2; grid-row: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; }
+        .ellipsis { color: #94a3b8; margin-left: 4px; }
         .empty {
           padding: 10px;
           color: #64748b;
@@ -138,6 +141,29 @@
       const m = testId.match(/^conversation-turn-(\d+)$/);
       return m ? m[1] : null;
     }
+
+    // Find the innermost .whitespace-pre-wrap within an article
+    function findInnermostPromptNode(articleEl) {
+      const candidates = Array.from(articleEl.querySelectorAll('.whitespace-pre-wrap'));
+      if (!candidates.length) return null;
+      // Choose the node that has no descendant with the same class
+      for (const node of candidates) {
+        if (!node.querySelector('.whitespace-pre-wrap')) return node;
+      }
+      // Fallback to the last one
+      return candidates[candidates.length - 1];
+    }
+
+    // Extract first up-to-7 words of the prompt and always append ellipsis
+    function extractPromptPreview(articleEl) {
+      const node = findInnermostPromptNode(articleEl);
+      if (!node) return "";
+      const raw = (node.textContent || "").replace(/\s+/g, " ").trim();
+      if (!raw) return "";
+      const words = raw.split(" ").filter(Boolean);
+      const preview = words.slice(0, 7).join(" ");
+      return preview;
+    }
   
     // Build / rebuild list
     function rebuildList() {
@@ -167,10 +193,26 @@
         a.href = `#${el.id}`;
         a.className = "item";
         a.dataset.targetId = el.id;
-        a.textContent = `conversation-turn-${id}`;
         const dot = document.createElement("span");
         dot.className = "dot";
-        a.prepend(dot);
+        a.appendChild(dot);
+
+        const line1 = document.createElement("div");
+        line1.className = "line1";
+        line1.textContent = `conversation-turn-${id}`;
+        a.appendChild(line1);
+
+        const line2 = document.createElement("div");
+        line2.className = "line2";
+        const previewText = extractPromptPreview(el);
+        const previewSpan = document.createElement("span");
+        previewSpan.className = "preview";
+        previewSpan.textContent = previewText;
+        const ellipsisSpan = document.createElement("span");
+        ellipsisSpan.className = "ellipsis";
+        ellipsisSpan.textContent = "…";
+        line2.append(previewSpan, ellipsisSpan);
+        a.appendChild(line2);
   
         a.addEventListener("click", (e) => {
           e.preventDefault();
@@ -245,6 +287,10 @@
             if (m.target.matches(TARGET_SELECTOR) && (m.attributeName === "data-testid" || m.attributeName === "data-turn" || m.attributeName === "id")) {
               relevant = true; break;
             }
+          } else if (m.type === "characterData") {
+            const node = m.target;
+            const parent = node.parentElement || node.parentNode?.parentElement; // handle text nodes
+            if (parent && parent.closest?.(TARGET_SELECTOR)) { relevant = true; break; }
           }
         }
         if (relevant) {
@@ -259,6 +305,7 @@
         childList: true,
         subtree: true,
         attributes: true,
+        characterData: true,
         attributeFilter: ["data-testid", "data-turn", "id"],
       });
     }
