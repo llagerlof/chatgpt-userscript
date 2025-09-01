@@ -2,8 +2,7 @@
 
 A lightweight userscript that adds a floating "Prompts" navigator to ChatGPT conversations. It lists your user messages, lets you jump to any prompt with one click, briefly highlights the target, and keeps the active item in sync as you scroll.
 
-![Screenshot of the floating "Prompts" navigator panel in ChatGPT](./assets/readme/screenshot.png)
-
+https://github.com/user-attachments/assets/1319cda0-0639-4a19-8395-82e3c12fab74
 
 ### Features
 - **Floating panel**: Bottom‑right card, encapsulated in a Shadow DOM to avoid style clashes.
