@@ -1,10 +1,9 @@
 // ==UserScript==
 // @name        ChatGPT User Script
 // @namespace   Violentmonkey Scripts
-// @match       https://chatgpt.com/c/*
-// @match       https://chatgpt.com/g/*
+// @match       https://chatgpt.com/*
 // @grant       none
-// @version     1.0
+// @version     1.1
 // @author      -
 // @description 31/08/2025, 14:26:46
 // @run-at      document-idle
@@ -316,11 +315,11 @@
     }
   
     // Handle SPA route changes (ChatGPT is an SPA)
-    let lastPath = location.pathname;
+    let lastUrl = location.href;
     function watchUrlChanges() {
       const check = () => {
-        if (location.pathname !== lastPath) {
-          lastPath = location.pathname;
+        if (location.href !== lastUrl) {
+          lastUrl = location.href;
           // Give the UI a moment to render
           setTimeout(() => rebuildList(), 500);
         }
