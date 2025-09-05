@@ -150,10 +150,14 @@
       // Set initial collapsed state from storage (default: open)
       const initialPromptsCollapsed = storageGetBool(STORAGE_KEYS.promptsCollapsed, false);
       if (initialPromptsCollapsed) wrap.classList.add("collapsed");
+      // Set initial glyph based on collapsed state
+      collapseBtn.textContent = initialPromptsCollapsed ? "□" : "—";
       collapseBtn.addEventListener("click", () => {
         wrap.classList.toggle("collapsed");
         const isCollapsed = wrap.classList.contains("collapsed");
         storageSetBool(STORAGE_KEYS.promptsCollapsed, isCollapsed);
+        // Update glyph when toggled
+        collapseBtn.textContent = isCollapsed ? "□" : "—";
       });
   
       // Manual refresh
