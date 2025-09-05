@@ -15,6 +15,25 @@
   
     const MENU_ID = "cgpt-user-script";
     const TARGET_SELECTOR = 'article[data-testid^="conversation-turn-"][data-turn="user"]';
+    const STORAGE_KEYS = {
+      promptsCollapsed: "cgpt:promptsCollapsed",
+      gptsCollapsed: "cgpt:gptsCollapsed",
+      projectsCollapsed: "cgpt:projectsCollapsed",
+    };
+
+    function storageGetBool(key, fallback) {
+      try {
+        const v = localStorage.getItem(key);
+        if (v === null) return fallback;
+        return v === "true";
+      } catch {
+        return fallback;
+      }
+    }
+
+    function storageSetBool(key, value) {
+      try { localStorage.setItem(key, value ? "true" : "false"); } catch { /* ignore */ }
+    }
   
     // Create container with Shadow DOM to avoid style clashes
     function createMenuRoot() {
@@ -128,8 +147,13 @@
   
       // Collapse toggle
       const collapseBtn = shadow.getElementById("collapse");
+      // Set initial collapsed state from storage (default: open)
+      const initialPromptsCollapsed = storageGetBool(STORAGE_KEYS.promptsCollapsed, false);
+      if (initialPromptsCollapsed) wrap.classList.add("collapsed");
       collapseBtn.addEventListener("click", () => {
         wrap.classList.toggle("collapsed");
+        const isCollapsed = wrap.classList.contains("collapsed");
+        storageSetBool(STORAGE_KEYS.promptsCollapsed, isCollapsed);
       });
   
       // Manual refresh
@@ -427,15 +451,18 @@
       if (headerAnchor.querySelector(`.${ACCORDION_ARROW_BTN_CLASS}`)) return;
 
       const btn = createAccordionArrowButton();
-      btn.setAttribute(ACCORDION_COLLAPSED_ATTR, "true");
-      btn.setAttribute("aria-expanded", "false");
+      const initialCollapsed = storageGetBool(STORAGE_KEYS.gptsCollapsed, true);
+      btn.setAttribute(ACCORDION_COLLAPSED_ATTR, initialCollapsed ? "true" : "false");
+      btn.setAttribute("aria-expanded", (!initialCollapsed).toString());
 
       btn.addEventListener("click", function (ev) {
         ev.stopPropagation();
         ev.preventDefault();
         const items = collectSiblingGptItems(headerAnchor);
         const collapsed = btn.getAttribute(ACCORDION_COLLAPSED_ATTR) === "true";
-        accordionToggleItems(items, !collapsed, btn);
+        const nextCollapse = !collapsed;
+        accordionToggleItems(items, nextCollapse, btn);
+        storageSetBool(STORAGE_KEYS.gptsCollapsed, nextCollapse);
       });
 
       btn.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -444,7 +471,7 @@
       headerAnchor.appendChild(btn);
 
       const items = collectSiblingGptItems(headerAnchor);
-      accordionToggleItems(items, true, btn);
+      accordionToggleItems(items, initialCollapsed, btn);
     }
 
     // Projects accordion
@@ -475,8 +502,9 @@
       label.textContent = "Projects";
 
       const arrowBtn = createAccordionArrowButton();
-      arrowBtn.setAttribute(ACCORDION_COLLAPSED_ATTR, "true");
-      arrowBtn.setAttribute("aria-expanded", "false");
+      const initialProjectsCollapsed = storageGetBool(STORAGE_KEYS.projectsCollapsed, true);
+      arrowBtn.setAttribute(ACCORDION_COLLAPSED_ATTR, initialProjectsCollapsed ? "true" : "false");
+      arrowBtn.setAttribute("aria-expanded", (!initialProjectsCollapsed).toString());
 
       headerDiv.appendChild(iconWrapper);
       headerDiv.appendChild(label);
@@ -484,8 +512,8 @@
 
       aside.insertBefore(headerDiv, aside.firstElementChild || null);
 
-      // Mark the entire aside as collapsed so that CSS hides any dynamic children too
-      aside.setAttribute("data-gm-projects-collapsed", "true");
+      // Mark the entire aside so that CSS hides any dynamic children too
+      aside.setAttribute("data-gm-projects-collapsed", initialProjectsCollapsed ? "true" : "false");
 
       function collectItemsInAside() {
         const items = [];
@@ -505,13 +533,14 @@
         accordionToggleItems(items, nextCollapse, arrowBtn);
         // Sync aside-level collapsed attribute so new nodes obey CSS rule
         aside.setAttribute("data-gm-projects-collapsed", nextCollapse ? "true" : "false");
+        storageSetBool(STORAGE_KEYS.projectsCollapsed, nextCollapse);
       });
 
       arrowBtn.addEventListener("mousedown", (e) => e.stopPropagation());
       arrowBtn.addEventListener("mouseup", (e) => e.stopPropagation());
 
       const itemsNow = collectItemsInAside();
-      accordionToggleItems(itemsNow, true, arrowBtn);
+      accordionToggleItems(itemsNow, initialProjectsCollapsed, arrowBtn);
 
       aside.setAttribute("data-gm-has-projects", "true");
     }
@@ -545,6 +574,7 @@
           if (!btn) return;
           const items = collectSiblingGptItems(header);
           accordionToggleItems(items, true, btn);
+          storageSetBool(STORAGE_KEYS.gptsCollapsed, true);
         },
         expandGpts: function () {
           const header = document.querySelector('a[data-testid="explore-gpts-button"]');
@@ -553,6 +583,7 @@
           if (!btn) return;
           const items = collectSiblingGptItems(header);
           accordionToggleItems(items, false, btn);
+          storageSetBool(STORAGE_KEYS.gptsCollapsed, false);
         },
         collapseProjects: function () {
           const aside = document.querySelector('aside#snorlax-heading') || document.querySelector('aside[id^="snorlax"]');
@@ -562,6 +593,7 @@
           const items = Array.from(aside.children).filter((c) => c.id !== PROJECTS_HEADER_ID);
           accordionToggleItems(items, true, btn);
           aside.setAttribute("data-gm-projects-collapsed", "true");
+          storageSetBool(STORAGE_KEYS.projectsCollapsed, true);
         },
         expandProjects: function () {
           const aside = document.querySelector('aside#snorlax-heading') || document.querySelector('aside[id^="snorlax"]');
@@ -571,6 +603,7 @@
           const items = Array.from(aside.children).filter((c) => c.id !== PROJECTS_HEADER_ID);
           accordionToggleItems(items, false, btn);
           aside.setAttribute("data-gm-projects-collapsed", "false");
+          storageSetBool(STORAGE_KEYS.projectsCollapsed, false);
         },
       };
     }
