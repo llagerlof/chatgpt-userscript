@@ -4,7 +4,7 @@
 // @match       https://chatgpt.com/*
 // @match       https://www.chatgpt.com/*
 // @grant       none
-// @version     1.2
+// @version     1.3
 // @author      Lawrence Lagerlof
 // @description Floating prompts navigator + GPTs/Projects sidebar accordions (collapsed by default)
 // @run-at      document-idle
@@ -160,6 +160,16 @@
         // Update glyph when toggled
         collapseBtn.textContent = isCollapsed ? "□" : "—";
       });
+      
+      // Toggle collapse when clicking the header/title bar (excluding buttons/actions area)
+      const header = shadow.querySelector(".header");
+      if (header) {
+        header.addEventListener("click", (ev) => {
+          const target = ev.target instanceof Element ? ev.target : null;
+          if (target && (target.closest("button") || target.closest(".actions"))) return;
+          collapseBtn.click();
+        });
+      }
   
       // Manual refresh
       const refreshBtn = shadow.getElementById("refresh");
