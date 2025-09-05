@@ -94,6 +94,7 @@
           font-size: 11px;
         }
         button:hover { background: #f1f5f9; }
+        #refresh { display: none !important; }
         .list {
           overflow: auto;
           padding: 6px;
