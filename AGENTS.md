@@ -4,4 +4,11 @@ This is a userscript to be used on Tampermonkey, Violentmonkey, Greasemonkey, et
 
 ## About the project
 
-This ChatGPT userscript adds a functionality to ChatGPT conversations. In the current conversation it displays a menu where each item represents a user prompt from the current conversation. When you click on an item, the page scrolls to that chosen prompt.
+This ChatGPT userscript adds two independent features:
+
+- A floating prompts navigator listing user messages from the current conversation; clicking an item scrolls to that prompt.
+- Sidebar accordions for the left menu: one for the existing "GPTs" section and another for a new "Projects" section. Both are collapsed by default and use a rotating chevron.
+
+Implementation notes:
+- The prompts navigator UI is encapsulated in a Shadow DOM to avoid style clashes.
+- The sidebar accordions are implemented in a self-contained section with shared utilities, and a dedicated scanner/observer that avoids coupling with the prompts navigator.

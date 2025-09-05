@@ -2,10 +2,11 @@
 // @name        ChatGPT User Script
 // @namespace   Violentmonkey Scripts
 // @match       https://chatgpt.com/*
+// @match       https://www.chatgpt.com/*
 // @grant       none
-// @version     1.1
-// @author      -
-// @description 31/08/2025, 14:26:46
+// @version     1.2
+// @author      Lawrence Lagerlof
+// @description Floating prompts navigator + GPTs/Projects sidebar accordions (collapsed by default)
 // @run-at      document-idle
 // ==/UserScript==
 
@@ -328,12 +329,259 @@
       requestAnimationFrame(check);
     }
   
+    /* ---------------------------------------------
+     * Sidebar accordions (GPTs + Projects)
+     * - Kept self-contained to avoid coupling with the prompts navigator
+     * --------------------------------------------- */
+    const ACCORDION_ARROW_BTN_CLASS = "gm-gpts-accordion-btn";
+    const ACCORDION_COLLAPSED_ATTR = "data-gm-collapsed";
+    const PROJECTS_HEADER_ID = "gm-projects-header";
+
+    // Shared utils for accordions
+    function createAccordionArrowButton() {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = ACCORDION_ARROW_BTN_CLASS;
+      btn.setAttribute("aria-expanded", "false");
+      btn.title = "Collapse/expand";
+      btn.style.border = "none";
+      btn.style.background = "transparent";
+      btn.style.display = "inline-flex";
+      btn.style.alignItems = "center";
+      btn.style.justifyContent = "center";
+      btn.style.padding = "4px";
+      btn.style.marginLeft = "6px";
+      btn.style.cursor = "pointer";
+      btn.style.flex = "0 0 auto";
+      btn.style.width = "28px";
+      btn.style.height = "28px";
+      btn.style.minWidth = "28px";
+
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `;
+
+      const styleId = "gm-gpts-accordion-styles";
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement("style");
+        style.id = styleId;
+        style.textContent = `
+          .${ACCORDION_ARROW_BTN_CLASS}[${ACCORDION_COLLAPSED_ATTR}="true"] svg { transform: rotate(0deg); transition: transform .18s ease; }
+          .${ACCORDION_ARROW_BTN_CLASS}[${ACCORDION_COLLAPSED_ATTR}="false"] svg { transform: rotate(90deg); transition: transform .18s ease; }
+          .gm-projects-header { display: flex; align-items: center; gap: 0.75rem; padding: .35rem .5rem; cursor: default; user-select: none; }
+          .gm-projects-header .gm-projects-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; }
+          /* Ensure that when Projects is collapsed, any dynamically inserted siblings stay hidden */
+          aside[data-gm-projects-collapsed="true"] > :not(#gm-projects-header) { display: none !important; }
+        `;
+        document.head.appendChild(style);
+      }
+
+      return btn;
+    }
+
+    function accordionToggleItems(items, collapse, btn) {
+      items.forEach((i) => {
+        if (collapse) {
+          if (i.style.display !== "none") {
+            i.setAttribute("data-gm-prev-display", i.style.display || "");
+          }
+          i.style.display = "none";
+        } else {
+          const prev = i.getAttribute("data-gm-prev-display");
+          if (prev !== null) {
+            i.style.display = prev;
+            i.removeAttribute("data-gm-prev-display");
+          } else {
+            i.style.display = "";
+          }
+        }
+      });
+      if (btn) {
+        btn.setAttribute(ACCORDION_COLLAPSED_ATTR, collapse ? "true" : "false");
+        btn.setAttribute("aria-expanded", (!collapse).toString());
+      }
+    }
+
+    // GPTs accordion
+    function isGptItemAnchor(a) {
+      if (!a || a.tagName !== "A") return false;
+      const href = a.getAttribute("href") || "";
+      return href.startsWith("/g/") || href.includes("/g/g-");
+    }
+
+    function collectSiblingGptItems(headerAnchor) {
+      const items = [];
+      let el = headerAnchor.nextElementSibling;
+      while (el) {
+        if (el.matches && el.matches('a[data-testid="explore-gpts-button"]')) break;
+        if (isGptItemAnchor(el)) items.push(el);
+        el = el.nextElementSibling;
+      }
+      return items;
+    }
+
+    function addAccordionToGptsHeader(headerAnchor) {
+      if (!headerAnchor) return;
+      if (headerAnchor.querySelector(`.${ACCORDION_ARROW_BTN_CLASS}`)) return;
+
+      const btn = createAccordionArrowButton();
+      btn.setAttribute(ACCORDION_COLLAPSED_ATTR, "true");
+      btn.setAttribute("aria-expanded", "false");
+
+      btn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        const items = collectSiblingGptItems(headerAnchor);
+        const collapsed = btn.getAttribute(ACCORDION_COLLAPSED_ATTR) === "true";
+        accordionToggleItems(items, !collapsed, btn);
+      });
+
+      btn.addEventListener("mousedown", (e) => e.stopPropagation());
+      btn.addEventListener("mouseup", (e) => e.stopPropagation());
+
+      headerAnchor.appendChild(btn);
+
+      const items = collectSiblingGptItems(headerAnchor);
+      accordionToggleItems(items, true, btn);
+    }
+
+    // Projects accordion
+    function addProjectsAccordion(aside) {
+      if (!aside || aside.getAttribute("data-gm-has-projects") === "true") return;
+
+      if (document.getElementById(PROJECTS_HEADER_ID)) {
+        aside.setAttribute("data-gm-has-projects", "true");
+        return;
+      }
+
+      const headerDiv = document.createElement("div");
+      headerDiv.id = PROJECTS_HEADER_ID;
+      headerDiv.className = "group __menu-item hoverable gap-1.5 gm-projects-header";
+      headerDiv.setAttribute("tabindex", "0");
+
+      const iconWrapper = document.createElement("div");
+      iconWrapper.className = "flex items-center justify-center icon";
+      iconWrapper.style.flex = "0 0 auto";
+      iconWrapper.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M7.94556 14.0277C7.9455 12.9376 7.06204 12.054 5.97192 12.054C4.88191 12.0542 3.99835 12.9376 3.99829 14.0277C3.99829 15.1177 4.88188 16.0012 5.97192 16.0013C7.06207 16.0013 7.94556 15.1178 7.94556 14.0277ZM16.0012 14.0277C16.0012 12.9376 15.1177 12.054 14.0276 12.054C12.9375 12.0541 12.054 12.9376 12.054 14.0277C12.054 15.1178 12.9375 16.0012 14.0276 16.0013C15.1177 16.0013 16.0012 15.1178 16.0012 14.0277ZM7.94556 5.97201C7.94544 4.88196 7.062 3.99837 5.97192 3.99837C4.88195 3.99849 3.99841 4.88203 3.99829 5.97201C3.99829 7.06208 4.88187 7.94552 5.97192 7.94564C7.06207 7.94564 7.94556 7.06216 7.94556 5.97201ZM16.0012 5.97201C16.0011 4.88196 15.1177 3.99837 14.0276 3.99837C12.9376 3.99843 12.0541 4.882 12.054 5.97201C12.054 7.06212 12.9375 7.94558 14.0276 7.94564C15.1177 7.94564 16.0012 7.06216 16.0012 5.97201Z"></path>
+        </svg>
+      `;
+
+      const label = document.createElement("div");
+      label.className = "gm-projects-label";
+      label.textContent = "Projects";
+
+      const arrowBtn = createAccordionArrowButton();
+      arrowBtn.setAttribute(ACCORDION_COLLAPSED_ATTR, "true");
+      arrowBtn.setAttribute("aria-expanded", "false");
+
+      headerDiv.appendChild(iconWrapper);
+      headerDiv.appendChild(label);
+      headerDiv.appendChild(arrowBtn);
+
+      aside.insertBefore(headerDiv, aside.firstElementChild || null);
+
+      // Mark the entire aside as collapsed so that CSS hides any dynamic children too
+      aside.setAttribute("data-gm-projects-collapsed", "true");
+
+      function collectItemsInAside() {
+        const items = [];
+        Array.from(aside.children).forEach((child) => {
+          if (child === headerDiv) return;
+          items.push(child);
+        });
+        return items;
+      }
+
+      arrowBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        const items = collectItemsInAside();
+        const collapsed = arrowBtn.getAttribute(ACCORDION_COLLAPSED_ATTR) === "true";
+        const nextCollapse = !collapsed;
+        accordionToggleItems(items, nextCollapse, arrowBtn);
+        // Sync aside-level collapsed attribute so new nodes obey CSS rule
+        aside.setAttribute("data-gm-projects-collapsed", nextCollapse ? "true" : "false");
+      });
+
+      arrowBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+      arrowBtn.addEventListener("mouseup", (e) => e.stopPropagation());
+
+      const itemsNow = collectItemsInAside();
+      accordionToggleItems(itemsNow, true, arrowBtn);
+
+      aside.setAttribute("data-gm-has-projects", "true");
+    }
+
+    // Scanner + observer for accordions
+    function scanAndAttachAccordions() {
+      const gptsHeader = document.querySelector('a[data-testid="explore-gpts-button"]') ||
+        Array.from(document.querySelectorAll('a.__menu-item')).find((a) => a.textContent.trim() === "GPTs");
+      if (gptsHeader) addAccordionToGptsHeader(gptsHeader);
+
+      const aside = document.querySelector('aside#snorlax-heading') || document.querySelector('aside[id^="snorlax"]');
+      if (aside) addProjectsAccordion(aside);
+    }
+
+    function startSidebarAccordions() {
+      // initial pass
+      scanAndAttachAccordions();
+
+      // observe DOM for dynamic sidebar updates
+      const observer = new MutationObserver(() => {
+        scanAndAttachAccordions();
+      });
+      observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
+
+      // Console helpers
+      window.__gmGptsAccordion = {
+        collapseGpts: function () {
+          const header = document.querySelector('a[data-testid="explore-gpts-button"]');
+          if (!header) return;
+          const btn = header.querySelector(`.${ACCORDION_ARROW_BTN_CLASS}`);
+          if (!btn) return;
+          const items = collectSiblingGptItems(header);
+          accordionToggleItems(items, true, btn);
+        },
+        expandGpts: function () {
+          const header = document.querySelector('a[data-testid="explore-gpts-button"]');
+          if (!header) return;
+          const btn = header.querySelector(`.${ACCORDION_ARROW_BTN_CLASS}`);
+          if (!btn) return;
+          const items = collectSiblingGptItems(header);
+          accordionToggleItems(items, false, btn);
+        },
+        collapseProjects: function () {
+          const aside = document.querySelector('aside#snorlax-heading') || document.querySelector('aside[id^="snorlax"]');
+          if (!aside) return;
+          const btn = aside.querySelector(`#${PROJECTS_HEADER_ID} .${ACCORDION_ARROW_BTN_CLASS}`);
+          if (!btn) return;
+          const items = Array.from(aside.children).filter((c) => c.id !== PROJECTS_HEADER_ID);
+          accordionToggleItems(items, true, btn);
+          aside.setAttribute("data-gm-projects-collapsed", "true");
+        },
+        expandProjects: function () {
+          const aside = document.querySelector('aside#snorlax-heading') || document.querySelector('aside[id^="snorlax"]');
+          if (!aside) return;
+          const btn = aside.querySelector(`#${PROJECTS_HEADER_ID} .${ACCORDION_ARROW_BTN_CLASS}`);
+          if (!btn) return;
+          const items = Array.from(aside.children).filter((c) => c.id !== PROJECTS_HEADER_ID);
+          accordionToggleItems(items, false, btn);
+          aside.setAttribute("data-gm-projects-collapsed", "false");
+        },
+      };
+    }
+
     // Initialize
     function init() {
       createMenuRoot();
       rebuildList();
       setupMutationObserver();
       watchUrlChanges();
+      startSidebarAccordions();
   
       // Ensure smooth scrolling on the page (fallback)
       try {
